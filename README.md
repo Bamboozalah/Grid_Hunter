@@ -2,14 +2,13 @@
 
 > *Targeted OSINT for Utility Sector Threat Research*
 
-GRID_HUNTER is a tool for tools designed to identify sensitive and mismanaged data related to electric utility companies. It automates dork generation, GitHub code search, Google programmable queries, and vendor or infrastructure keyword exploration — then compiles everything into a structured, analyst-ready report.
+GRID_HUNTER is a tool for tools designed to identify sensitive and mismanaged data related to electric utility companies. It automates dork generation, GitHub code search, Google programmable queries, and vendor or infrastructure keyword exploration.
 
 ---
 
 ## Use Case
 
 Designed for:
-- Security researchers and red teamers
 - Threat intelligence analysts in the energy sector
 - Utility cybersecurity teams seeking proactive reconnaissance
 
