@@ -126,7 +126,7 @@ Use `--menu` to add words live.
 ---
 
 Don't use for nefarious purposes--keep yo' hands to yourself or you can cache me outside 
---(•_•)
---( •_•)>⌐■-■
---(⌐■_■)
+- (•_•)
+- ( •_•)>⌐■-■
+- (⌐■_■)
 
