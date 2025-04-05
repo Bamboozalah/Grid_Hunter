@@ -1,0 +1,11 @@
+{
+  "passwords": ["password", "pwd", "credentials", "secret", "key", "token"],
+  "api_keys": ["api_key", "client_secret", "access_token", "bearer", "authorization"],
+  "employee_info": ["employee_list", "roster", "directory", "hr_data", "contact_info"],
+  "service_accounts": ["svc_", "serviceaccount", "automation_user", "bot_user"],
+  "network_info": ["network_map", "topology", "vlan", "architecture", "ip_plan"],
+  "ot_schematics": ["ladder_logic", "control_panel", "wiring_diagram", "plc", "scada_config"],
+  "playbooks": ["incident_response", "IR_plan", "playbook", "blue_team", "sop"],
+  "compliance_docs": ["NERC CIP", "compliance_audit", "regulatory", "controls_matrix"],
+  "vendors": ["siemens", "schneider", "sel", "abb", "honeywell", "rockwell", "allen-bradley", "ge grid", "osisoft"]
+}
