@@ -1,4 +1,5 @@
-##Grid Hunter
+# grid_hunter.py - Recon Tool for Utility Sector OSINT Threat Research
+
 import argparse
 import json
 import os
@@ -51,25 +52,34 @@ def github_api_search(wordbank, output_file, company, github_token):
         f.write("\n".join(results))
     print(f"GitHub API findings saved to {output_file}")
 
-# === Google Programmable Search (live results) ===
-def google_programmable_search(wordbank, output_file, company):
-    print("Running Google Programmable Search queries...")
-    headers = {"Accept": "application/json"}
-    results = []
-    for category, terms in wordbank.items():
-        for term in terms:
-            query = f"{term} {company}"
-            url = f"https://www.googleapis.com/customsearch/v1?q={query}&cx={GOOGLE_CX}&key={GOOGLE_API_KEY}"
-            r = requests.get(url, headers=headers)
-            if r.status_code == 200:
-                data = r.json()
-                for item in data.get('items', []):
-                    results.append(f"[{category.upper()}] {item.get('title')} → {item.get('link')}")
-            else:
-                results.append(f"[{category.upper()}] ERROR: {r.status_code} for query '{query}'")
-    with open(output_file, "w") as f:
-        f.write("\n".join(results))
-    print(f"Google Search results saved to {output_file}")
+# === Google Programmable Search or Dork Generator ===
+def google_search(wordbank, company):
+    if GOOGLE_API_KEY and GOOGLE_CX:
+        print("Running Google Programmable Search queries...")
+        headers = {"Accept": "application/json"}
+        results = []
+        for category, terms in wordbank.items():
+            for term in terms:
+                query = f"{term} {company}"
+                url = f"https://www.googleapis.com/customsearch/v1?q={query}&cx={GOOGLE_CX}&key={GOOGLE_API_KEY}"
+                r = requests.get(url, headers=headers)
+                if r.status_code == 200:
+                    data = r.json()
+                    for item in data.get('items', []):
+                        results.append(f"[{category.upper()}] {item.get('title')} → {item.get('link')}")
+                else:
+                    results.append(f"[{category.upper()}] ERROR: {r.status_code} for query '{query}'")
+        with open(os.path.join(OUTPUT_DIR, "google_results.txt"), "w") as f:
+            f.write("\n".join(results))
+    else:
+        print("No Google API key detected — generating manual dork list...")
+        dorks = []
+        for category, terms in wordbank.items():
+            for term in terms:
+                dork = f"\"{term}\" AND \"{company}\" filetype:pdf OR filetype:xlsx"
+                dorks.append(f"[{category.upper()}] {dork}")
+        with open(os.path.join(OUTPUT_DIR, "google_dorks.txt"), "w") as f:
+            f.write("\n".join(dorks))
 
 # === Yandex Search URLs ===
 def yandex_search_urls(wordbank, output_file, company):
@@ -84,9 +94,8 @@ def yandex_search_urls(wordbank, output_file, company):
         f.write("\n".join(queries))
     print(f"Yandex dork links saved to {output_file}")
 
-# === FOIA Archive Search Placeholder ===
+# === FOIA, Pastebin, Postman ===
 def foia_scraper(company, output_file):
-    print("Preparing FOIA search URLs...")
     queries = [
         f"site:foia.gov {company}",
         f"site:archives.gov {company} NERC CIP",
@@ -95,11 +104,8 @@ def foia_scraper(company, output_file):
     ]
     with open(output_file, "w") as f:
         f.write("\n".join(queries))
-    print(f"FOIA queries saved to {output_file}")
 
-# === Pastebin-style Sites (placeholder links) ===
 def pastebin_sources(company, output_file):
-    print("Generating pastebin-style site queries...")
     targets = [
         f"site:pastebin.com {company}",
         f"site:ghostbin.com {company}",
@@ -108,11 +114,8 @@ def pastebin_sources(company, output_file):
     ]
     with open(output_file, "w") as f:
         f.write("\n".join(targets))
-    print(f"[✔] Paste site queries saved to {output_file}")
 
-# === Postman API Exposure Search ===
 def postman_dorks(wordbank, output_file, company):
-    print("Checking Postman public exposure dorks...")
     dorks = []
     for category, terms in wordbank.items():
         for term in terms:
@@ -120,18 +123,17 @@ def postman_dorks(wordbank, output_file, company):
             dorks.append(f"[{category.upper()}] {dork}")
     with open(output_file, "w") as f:
         f.write("\n".join(dorks))
-    print(f"[✔] Postman exposure dorks saved to {output_file}")
 
 # === Interactive Menu ===
 def interactive_menu():
-    company = input("Enter the electric utility company name to target (e.g. 'CenterPoint Energy'): ").strip()
+    company = input("Enter the electric utility company name to target (e.g. 'Watts Cookin Energy'): ").strip()
     github_token = input("Enter your GitHub personal access token: ").strip()
     while True:
         print("\nGRID_HUNTER :: Utility Recon Toolkit")
         print("1. View Wordbank Categories")
         print("2. Add Word to Category")
-        print("3. Run GitHub API + Google Search + Yandex URLs")
-        print("4. Run FOIA + Pastebin + Postman Checks")
+        print("3. Run Recon + Google + Yandex")
+        print("4. Run FOIA + Pastebin + Postman")
         print("5. Exit")
         choice = input("Choose an option: ").strip()
 
@@ -146,7 +148,7 @@ def interactive_menu():
         elif choice == '3':
             wordbank = load_wordbank()
             github_api_search(wordbank, os.path.join(OUTPUT_DIR, "github_results.txt"), company, github_token)
-            google_programmable_search(wordbank, os.path.join(OUTPUT_DIR, "google_results.txt"), company)
+            google_search(wordbank, company)
             yandex_search_urls(wordbank, os.path.join(OUTPUT_DIR, "yandex_dorks.txt"), company)
         elif choice == '4':
             wordbank = load_wordbank()
@@ -160,108 +162,25 @@ def interactive_menu():
 
 # === Main Entry ===
 def main():
-    parser = argparse.ArgumentParser(description="GRID_HUNTER - Sensitive Data OSINT Collector for Utility Sector")
-    parser.add_argument('--add', help='Term to add to the wordbank')
-    parser.add_argument('--to', help='Category to add the term to')
-    parser.add_argument('--menu', action='store_true', help='Launch interactive menu')
-    parser.add_argument('--dorks', action='store_true', help='Run GitHub, Google, and Yandex dork output')
-    parser.add_argument('--company', help='Target utility company name')
-    parser.add_argument('--token', help='GitHub token for authenticated API search')
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--dorks', action='store_true')
+    parser.add_argument('--menu', action='store_true')
+    parser.add_argument('--company')
+    parser.add_argument('--token')
     args = parser.parse_args()
 
     if args.menu:
         interactive_menu()
-    elif args.add and args.to:
-        add_to_wordbank(args.to.strip().lower(), args.add.strip().lower())
     elif args.dorks and args.company and args.token:
         wordbank = load_wordbank()
         github_api_search(wordbank, os.path.join(OUTPUT_DIR, "github_results.txt"), args.company, args.token)
-        google_programmable_search(wordbank, os.path.join(OUTPUT_DIR, "google_results.txt"), args.company)
+        google_search(wordbank, args.company)
         yandex_search_urls(wordbank, os.path.join(OUTPUT_DIR, "yandex_dorks.txt"), args.company)
         foia_scraper(args.company, os.path.join(OUTPUT_DIR, "foia_sources.txt"))
         pastebin_sources(args.company, os.path.join(OUTPUT_DIR, "pastebin_sources.txt"))
         postman_dorks(wordbank, os.path.join(OUTPUT_DIR, "postman_dorks.txt"), args.company)
     else:
-        print("[!] No actionable arguments provided. Use --menu or --dorks --company 'CompanyName' --token 'ghp_XXXX' or --add + --to")
+        print("[!] Missing arguments. Use --menu or --dorks --company 'Name' --token 'ghp_xxx'")
 
 if __name__ == '__main__':
     main()
-
-# === Generate Clickable HTML Dork Index ===
-def generate_clickable_report(company):
-    print("Generating clickable HTML dork index...")
-    html_path = os.path.join(OUTPUT_DIR, "gridhunter_dork_index.html")
-    sections = [
-        ("GitHub", "github_results.txt"),
-        ("Google", "google_results.txt"),
-        ("Yandex", "yandex_dorks.txt"),
-        ("FOIA", "foia_sources.txt"),
-        ("Pastebin-style", "pastebin_sources.txt"),
-        ("Postman", "postman_dorks.txt")
-    ]
-
-    with open(html_path, "w") as html:
-        html.write("<html><head><title>GRID_HUNTER Dork Index</title></head><body style='font-family:sans-serif;background:#111;color:#eee;padding:20px;'>\n")
-        html.write(f"<h1>GRID_HUNTER Dork Index for {company}</h1>\n")
-        for name, file in sections:
-            file_path = os.path.join(OUTPUT_DIR, file)
-            if os.path.exists(file_path):
-                html.write(f"<h2>{name}</h2><ul>\n")
-                with open(file_path) as f:
-                    for line in f:
-                        line = line.strip()
-                        if "http" in line or "https" in line:
-                            link = line.split()[-1]
-                            html.write(f"<li><a href='{link}' style='color:#90ee90;' target='_blank'>{line}</a></li>\n")
-                        else:
-                            html.write(f"<li>{line}</li>\n")
-                html.write("</ul>\n")
-        html.write("</body></html>")
-    print(f"[✔] Clickable HTML report created: {html_path}")
-
-# === Ask User to Create Clickable HTML Dork Index ===
-def prompt_for_clickable_report(company):
-    print("\nWould you like to generate a clickable HTML report of all dork links?")
-    print("1. No")
-    print("2. Yes")
-    choice = input("Choose an option: ").strip()
-    if choice == '2':
-        generate_clickable_report(company)
-
-# === Injected into interactive_menu flow ===
-def interactive_menu():
-    company = input("Enter the electric utility company name to target (e.g. 'CenterPoint Energy'): ").strip()
-    github_token = input("Enter your GitHub personal access token: ").strip()
-    while True:
-        print("\nGRID_HUNTER :: Utility Recon Toolkit")
-        print("1. View Wordbank Categories")
-        print("2. Add Word to Category")
-        print("3. Run GitHub API + Google Search + Yandex URLs")
-        print("4. Run FOIA + Pastebin + Postman Checks")
-        print("5. Exit")
-        choice = input("Choose an option: ").strip()
-
-        if choice == '1':
-            wordbank = load_wordbank()
-            for k in wordbank:
-                print(f"- {k}: {', '.join(wordbank[k])}")
-        elif choice == '2':
-            cat = input("Enter category: ").strip().lower()
-            term = input("Enter new term: ").strip().lower()
-            add_to_wordbank(cat, term)
-        elif choice == '3':
-            wordbank = load_wordbank()
-            github_api_search(wordbank, os.path.join(OUTPUT_DIR, "github_results.txt"), company, github_token)
-            google_programmable_search(wordbank, os.path.join(OUTPUT_DIR, "google_results.txt"), company)
-            yandex_search_urls(wordbank, os.path.join(OUTPUT_DIR, "yandex_dorks.txt"), company)
-            prompt_for_clickable_report(company)
-        elif choice == '4':
-            wordbank = load_wordbank()
-            foia_scraper(company, os.path.join(OUTPUT_DIR, "foia_sources.txt"))
-            pastebin_sources(company, os.path.join(OUTPUT_DIR, "pastebin_sources.txt"))
-            postman_dorks(wordbank, os.path.join(OUTPUT_DIR, "postman_dorks.txt"), company)
-            prompt_for_clickable_report(company)
-        elif choice == '5':
-            break
-        else:
-            print("[!] Invalid choice")
